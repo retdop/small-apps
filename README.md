@@ -1,4 +1,4 @@
-# claude-stuff
+# small-apps
 
 A personal portfolio site for code projects, writing, experiments, and notes. Built with static HTML/CSS and deployed via GitHub Pages.
 
