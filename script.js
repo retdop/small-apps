@@ -2,10 +2,6 @@ document.addEventListener("DOMContentLoaded", function () {
   var grid = document.getElementById("projects-grid");
 
   grid.innerHTML = PROJECTS.map(function (p) {
-    var tagsHtml = p.tags
-      .map(function (t) { return '<span class="tag">' + t + "</span>"; })
-      .join("");
-
     var card =
       '<article class="card">' +
         '<div class="card-header">' +
@@ -13,7 +9,6 @@ document.addEventListener("DOMContentLoaded", function () {
           '<span class="card-date">' + p.date + "</span>" +
         "</div>" +
         "<p>" + p.description + "</p>" +
-        '<div class="tags">' + tagsHtml + "</div>" +
       "</article>";
 
     return p.link
