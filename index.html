@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>claude-stuff</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="projects.js" defer></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>claude-stuff</h1>
+      <p class="tagline">Code projects, writing, experiments, and notes.</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <nav class="filter-tabs" role="tablist">
+      <button class="tab active" data-category="all">All</button>
+      <button class="tab" data-category="code">Code</button>
+      <button class="tab" data-category="writing">Writing</button>
+      <button class="tab" data-category="experiment">Experiments</button>
+      <button class="tab" data-category="notes">Notes</button>
+    </nav>
+
+    <div id="projects-grid" class="projects-grid"></div>
+
+    <noscript>
+      <p>Please enable JavaScript to view project cards and filtering.</p>
+    </noscript>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>&copy; 2026 retdop</p>
+    </div>
+  </footer>
+</body>
+</html>
