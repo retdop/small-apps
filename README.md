@@ -23,4 +23,4 @@ Commit and push. The GitHub Action deploys automatically.
 
 1. Go to **Settings > Pages** in the GitHub repo
 2. Set source to **GitHub Actions**
-3. Push to the `claude/github-pages-website-zkLRn` branch to trigger deployment
+3. Push to the `main` branch to trigger deployment
