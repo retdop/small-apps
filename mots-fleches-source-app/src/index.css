@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 36 33% 95%;
+    --foreground: 28 20% 10%;
+    --card: 36 30% 97%;
+    --card-foreground: 28 20% 10%;
+    --popover: 36 30% 97%;
+    --popover-foreground: 28 20% 10%;
+    --primary: 28 20% 10%;
+    --primary-foreground: 36 33% 95%;
+    --secondary: 33 18% 82%;
+    --secondary-foreground: 28 20% 10%;
+    --muted: 33 18% 88%;
+    --muted-foreground: 28 12% 45%;
+    --accent: 1 55% 39%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 1 55% 39%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 33 22% 78%;
+    --input: 33 22% 78%;
+    --ring: 28 20% 10%;
+    --radius: 0.25rem;
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Cormorant Garamond', Georgia, serif;
+  }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-down { animation: slide-down 0.25s ease-out; }
