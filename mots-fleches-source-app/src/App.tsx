@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { WORDS, THEMES, CAT_LABELS, normalize, wordKey, wiktUrl, buildSmartDeck, shuffle, STORAGE_KEY, type Word, type Stats } from "./data";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,6 @@ interface LastResult { word: Word; def: string; ok: boolean; streak: number; ski
 export default function App() {
   const [stats, setStats] = useState<Stats>({});
   const statsRef = useRef<Stats>({});
-  const pendingSave = useRef<Promise<void> | null>(null);
   const [loading, setLoading] = useState(true);
   const [deck, setDeck] = useState<DeckItem[]>([]);
   const [idx, setIdx] = useState(0);
@@ -126,6 +125,11 @@ export default function App() {
     setTimeout(() => inputRef.current?.focus(), 100);
   }, [stats, getPool]);
 
+  const advance = () => {
+    setIdx(i => i + 1); setInput(""); setShowHint(false);
+    setTimeout(() => inputRef.current?.focus(), 30);
+  };
+
   const submit = () => {
     const item = deck[idx];
     const cur = item.word, key = wordKey(cur);
@@ -135,8 +139,7 @@ export default function App() {
     save({ ...stats, [key]: upd });
     if (ok) setScore(s => s + 1); else setSessionErrors(p => [...p, item]);
     setLastResult({ word: cur, def: item.def, ok, streak: upd.streak });
-    setIdx(i => i + 1); setInput(""); setShowHint(false);
-    setTimeout(() => inputRef.current?.focus(), 30);
+    advance();
   };
 
   const skip = () => {
@@ -146,14 +149,19 @@ export default function App() {
     save({ ...stats, [key]: { ...prev, e: prev.e + 1, last: Date.now(), streak: 0 } });
     setSessionErrors(p => [...p, item]);
     setLastResult({ word: cur, def: item.def, ok: false, skipped: true, streak: 0 });
-    setIdx(i => i + 1); setInput(""); setShowHint(false);
-    setTimeout(() => inputRef.current?.focus(), 30);
+    advance();
   };
 
   const totalW = WORDS.length;
-  const learned = WORDS.filter(w => { const s = stats[wordKey(w)]; return s && s.s > s.e && s.s + s.e >= 2; }).length;
-  const trouble = WORDS.filter(w => { const s = stats[wordKey(w)]; return s && s.e > s.s; }).length;
-  const unseen = WORDS.filter(w => !stats[wordKey(w)]).length;
+  const { learned, trouble, unseen } = useMemo(() => ({
+    learned: WORDS.filter(w => { const s = stats[wordKey(w)]; return s && s.s > s.e && s.s + s.e >= 2; }).length,
+    trouble: WORDS.filter(w => { const s = stats[wordKey(w)]; return s && s.e > s.s; }).length,
+    unseen: WORDS.filter(w => !stats[wordKey(w)]).length,
+  }), [stats]);
+  const sortedWords = useMemo(() => [...WORDS].sort((a, b) => {
+    const sa = stats[wordKey(a)] || { e: 0, s: 0 }, sb = stats[wordKey(b)] || { e: 0, s: 0 };
+    return (sa.e + sa.s > 0 ? sa.s / (sa.e + sa.s) : -1) - (sb.e + sb.s > 0 ? sb.s / (sb.e + sb.s) : -1);
+  }), [stats]);
   const current = deck[idx];
   const done = started && idx >= deck.length && deck.length > 0;
   const progressPct = deck.length > 0 ? (idx / deck.length) * 100 : 0;
@@ -319,7 +327,7 @@ export default function App() {
                     À revoir · {sessionErrors.length}
                   </p>
                   {sessionErrors.map((item, i) => (
-                    <div key={i} className={`flex justify-between items-center py-1.5 ${i < sessionErrors.length - 1 ? "border-b border-border" : ""}`}>
+                    <div key={wordKey(item.word)} className={`flex justify-between items-center py-1.5 ${i < sessionErrors.length - 1 ? "border-b border-border" : ""}`}>
                       <span className="text-sm font-bold tracking-[2px]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{item.word.mot}</span>
                       <span className="text-xs text-muted-foreground italic">{item.def}</span>
                     </div>
@@ -358,14 +366,11 @@ export default function App() {
           <CollapsibleContent>
             <ScrollArea className="h-72 mt-2">
               <div className="space-y-0">
-                {[...WORDS].sort((a, b) => {
-                  const sa = stats[wordKey(a)] || { e: 0, s: 0 }, sb = stats[wordKey(b)] || { e: 0, s: 0 };
-                  return (sa.e + sa.s > 0 ? sa.s / (sa.e + sa.s) : -1) - (sb.e + sb.s > 0 ? sb.s / (sb.e + sb.s) : -1);
-                }).map((w, i) => {
+                {sortedWords.map((w) => {
                   const s = stats[wordKey(w)] || { e: 0, s: 0 };
                   const t = s.e + s.s, pct = t > 0 ? Math.round(s.s / t * 100) : -1;
                   return (
-                    <div key={i} className="flex items-center gap-2 py-1 border-b border-border text-xs">
+                    <div key={wordKey(w)} className="flex items-center gap-2 py-1 border-b border-border text-xs">
                       <span className="min-w-[70px] font-bold tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>{w.mot}</span>
                       <span className="flex-1 text-muted-foreground italic truncate">{w.defs[0]}</span>
                       <span className={`min-w-[30px] text-right text-[10px] font-bold ${
