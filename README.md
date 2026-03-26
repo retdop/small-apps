@@ -1,6 +1,6 @@
 # small-apps
 
-A personal portfolio site for code projects, writing, experiments, and notes. Built with static HTML/CSS and deployed via GitHub Pages.
+A collection of small experiments and projects, deployed as a static site via GitHub Pages.
 
 ## Adding a new project
 
