@@ -10,8 +10,6 @@ Edit `projects.js` and add an object to the `PROJECTS` array:
 {
   title: "My New Project",
   description: "A short description of the project.",
-  category: "code",          // code | writing | experiment | notes
-  tags: ["python", "web"],
   link: "https://example.com", // or null
   date: "2026-03"
 }
