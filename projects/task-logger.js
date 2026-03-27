@@ -156,6 +156,8 @@
   const $taskFreq = document.getElementById("task-freq");
   const $calendar = document.getElementById("calendar");
   const $calMonthLabel = document.getElementById("cal-month-label");
+  const $settingsBtn = document.getElementById("settings-btn");
+  const $addSection = document.getElementById("add-section");
   const $prevMonth = document.getElementById("prev-month");
   const $nextMonth = document.getElementById("next-month");
   const $detailDate = document.getElementById("detail-date");
@@ -280,24 +282,50 @@
   function renderDayDetail() {
     $detailDate.textContent = formatDate(selectedDate);
 
+    const todayStr = today();
+    const isPast = selectedDate <= todayStr;
     const dayLog = state.logs[selectedDate] || {};
-    const entries = state.tasks
-      .filter((t) => dayLog[t.id])
-      .map((t) => ({ task: t, time: dayLog[t.id] }));
+
+    // Show all due tasks for past/today days so they can be toggled
+    const dueTasks = isPast ? state.tasks.filter((t) => isTaskDue(t, selectedDate)) : [];
 
     // Also show tasks that were logged but since deleted
-    const loggedIds = Object.keys(dayLog);
     const knownIds = new Set(state.tasks.map((t) => t.id));
-    loggedIds.forEach((id) => {
-      if (!knownIds.has(id)) {
-        entries.push({ task: { id, name: "(deleted task)", freq: "" }, time: dayLog[id] });
-      }
-    });
+    const deletedEntries = Object.keys(dayLog)
+      .filter((id) => !knownIds.has(id))
+      .map((id) => ({ task: { id, name: "(deleted task)", freq: "" }, time: dayLog[id], deleted: true }));
 
-    $historyEmpty.style.display = entries.length ? "none" : "block";
+    const hasContent = dueTasks.length > 0 || deletedEntries.length > 0;
+    $historyEmpty.style.display = hasContent ? "none" : "block";
     $historyList.innerHTML = "";
 
-    entries.forEach(({ task, time }) => {
+    dueTasks.forEach((task) => {
+      const logEntry = dayLog[task.id];
+      const done = !!logEntry;
+
+      const row = document.createElement("div");
+      row.className = "task-row" + (done ? " done" : "");
+
+      const checkBtn = document.createElement("button");
+      checkBtn.className = "task-check";
+      checkBtn.innerHTML = done ? "&#10003;" : "";
+      checkBtn.title = done ? "Undo" : "Log task";
+      checkBtn.addEventListener("click", () => toggleLog(task.id, selectedDate));
+
+      const info = document.createElement("div");
+      info.className = "task-info";
+      let nameHtml = '<div class="name">' + escHtml(task.name) + "</div>";
+      nameHtml += '<div class="freq">' + capitalize(task.freq) + "</div>";
+      if (done) {
+        nameHtml += '<div class="log-time">Logged ' + escHtml(logEntry) + "</div>";
+      }
+      info.innerHTML = nameHtml;
+
+      row.append(checkBtn, info);
+      $historyList.appendChild(row);
+    });
+
+    deletedEntries.forEach(({ task, time }) => {
       const row = document.createElement("div");
       row.className = "task-row done";
 
@@ -326,9 +354,13 @@
         delete state.logs[dateStr];
       }
     } else {
-      const now = new Date();
-      state.logs[dateStr][taskId] =
-        now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+      if (dateStr === today()) {
+        const now = new Date();
+        state.logs[dateStr][taskId] =
+          now.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+      } else {
+        state.logs[dateStr][taskId] = "retroactively";
+      }
     }
     save(state);
     renderToday();
@@ -364,6 +396,12 @@
     addTask(name, $taskFreq.value);
     $taskName.value = "";
     $taskName.focus();
+  });
+
+  $settingsBtn.addEventListener("click", () => {
+    const open = !$addSection.hidden;
+    $addSection.hidden = open;
+    $settingsBtn.setAttribute("aria-expanded", String(!open));
   });
 
   $prevMonth.addEventListener("click", () => {

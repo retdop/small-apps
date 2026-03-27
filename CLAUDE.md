@@ -61,6 +61,10 @@ Both workflows use `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` to pin GitHub Actio
 
 The landing page uses a dark GitHub-style palette defined as CSS variables in `styles.css`. New apps don't need to match exactly but should be readable on dark backgrounds if embedded via the landing page.
 
+## Workflow rules
+
+- **Always verify CI passes before declaring work done.** After pushing, check the PR's check runs and wait for all to succeed. Fix any failures before finishing.
+
 ## Things to avoid
 
 - Don't add a monorepo tool (Turborepo, Nx, etc.) — the build graph is simple enough to manage manually.
