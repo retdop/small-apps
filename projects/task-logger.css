@@ -33,6 +33,30 @@ header { padding: 24px 0 32px; }
 header h1 { font-size: 1.6rem; font-weight: 700; }
 .subtitle { color: var(--text-dim); font-size: 0.9rem; margin-top: 4px; }
 
+.header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.btn-settings {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.btn-settings:hover { color: var(--text); border-color: #484f58; background: var(--bg-hover); }
+.btn-settings[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); background: var(--bg-hover); }
+
 section { margin-bottom: 36px; }
 section h2 {
   font-size: 1rem;

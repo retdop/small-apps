@@ -156,6 +156,8 @@
   const $taskFreq = document.getElementById("task-freq");
   const $calendar = document.getElementById("calendar");
   const $calMonthLabel = document.getElementById("cal-month-label");
+  const $settingsBtn = document.getElementById("settings-btn");
+  const $addSection = document.getElementById("add-section");
   const $prevMonth = document.getElementById("prev-month");
   const $nextMonth = document.getElementById("next-month");
   const $detailDate = document.getElementById("detail-date");
@@ -394,6 +396,12 @@
     addTask(name, $taskFreq.value);
     $taskName.value = "";
     $taskName.focus();
+  });
+
+  $settingsBtn.addEventListener("click", () => {
+    const open = !$addSection.hidden;
+    $addSection.hidden = open;
+    $settingsBtn.setAttribute("aria-expanded", String(!open));
   });
 
   $prevMonth.addEventListener("click", () => {
