@@ -237,7 +237,6 @@ export function buildSmartDeck(words: Word[], stats: Stats): { word: Word; def: 
     const errR = total > 0 ? s.e / total : 0.5;
     const days = s.last ? (now - s.last) / 86400000 : 999;
     let wt = total === 0 ? 5 : (s.e >= s.s ? 8 + errR * 3 + Math.min(days / 3, 3) : errR * 2 + Math.min(days / 7, 2));
-    wt += Math.random() * 4;
     return { word: w, def: pickDef(w), wt };
   }).sort((a, b) => b.wt - a.wt).map(({ word, def }) => ({ word, def }));
 }
