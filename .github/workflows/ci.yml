@@ -25,6 +25,12 @@ jobs:
           pnpm install --frozen-lockfile
           npx vite build
 
+      - name: Build task-logger
+        working-directory: task-logger-source
+        run: |
+          pnpm install --frozen-lockfile
+          npx vite build
+
   validate-html:
     runs-on: ubuntu-latest
     steps:

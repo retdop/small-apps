@@ -40,6 +40,14 @@ jobs:
           cp dist/mots-fleches.js ../projects/mots-fleches.js
           cp dist/mots-fleches.css ../projects/mots-fleches.css
 
+      - name: Build task-logger
+        working-directory: task-logger-source
+        run: |
+          pnpm install --frozen-lockfile
+          npx vite build
+          cp dist/task-logger.js ../projects/task-logger.js
+          cp dist/task-logger.css ../projects/task-logger.css
+
       - name: Setup Pages
         uses: actions/configure-pages@v6.0.0
 

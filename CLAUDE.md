@@ -8,23 +8,52 @@ Static site hosting a collection of small apps, deployed to GitHub Pages via Git
 
 - **No root-level package manager.** Don't add a `package.json` or install anything at the repo root. Each compiled app lives in its own subdirectory with its own dependencies.
 - **`projects.js` is the project registry.** To add or remove a card on the landing page, only edit this file.
-- **`projects/` contains committed build artifacts.** `mots-fleches.js` and `mots-fleches.css` are compiled output that lives in the repo. After rebuilding Mots Fléchés locally, copy the dist files here before committing.
-- **pnpm is the package manager** for `mots-fleches-source-app/`. Use `pnpm install --frozen-lockfile` to match CI.
+- **`projects/` contains committed build artifacts.** Compiled `.js` and `.css` files live here. After rebuilding an app locally, copy the dist files here before committing.
+- **pnpm is the package manager** for all compiled apps. Use `pnpm install --frozen-lockfile` to match CI.
 - **HTML validation runs on every PR.** All `.html` files under `projects/` (and `index.html`) are validated by `html-validate`. Keep markup valid.
 
 ## Project types
 
 | Type | Example | Build step | Files |
 |---|---|---|---|
-| Vanilla | Task Logger | None | `projects/*.html`, `*.css`, `*.js` |
-| Compiled | Mots Fléchés | Vite (pnpm) | Source in `mots-fleches-source-app/`, output in `projects/` |
+| Vanilla | *(simple tools only)* | None | `projects/*.html`, `*.css`, `*.js` |
+| Compiled (React) | Mots Fléchés, Task Logger | Vite (pnpm) | Source in `*-source-app/`, output in `projects/` |
+
+**Vanilla is allowed** for genuinely simple, single-purpose tools with minimal state. For anything with non-trivial UI, multi-section state, or that may grow in complexity, use the React stack.
+
+## Standard stack for compiled apps
+
+All compiled apps use: **React 19 + TypeScript + Vite + Tailwind CSS 3**
+
+- No Radix UI required for simple apps — add only what you need
+- Path alias: `@` maps to `src/`
+- Dev server: `pnpm dev` inside the source directory
+- Build output: `dist/<app-name>.js` and `dist/<app-name>.css` — copy to `projects/` after building
+- Output filenames must be deterministic (no hashes) — the HTML entry points reference them by fixed name
+
+### Vite config template
+
+```ts
+build: {
+  rollupOptions: {
+    output: {
+      entryFileNames: "my-app.js",
+      chunkFileNames: "my-app-[name].js",
+      assetFileNames: (assetInfo) => {
+        if (assetInfo.name?.endsWith(".css")) return "my-app.css";
+        return assetInfo.name ?? "asset";
+      },
+    },
+  },
+},
+```
 
 ## CI/CD workflows
 
 | File | Trigger | Does |
 |---|---|---|
-| `.github/workflows/ci.yml` | PR to `main` | Builds React apps, validates HTML |
-| `.github/workflows/deploy.yml` | Push to `main` | Builds, uploads whole repo as Pages artifact, deploys |
+| `.github/workflows/ci.yml` | PR to `main` | Builds all compiled apps, validates HTML |
+| `.github/workflows/deploy.yml` | Push to `main` | Builds, copies artifacts, uploads whole repo as Pages artifact, deploys |
 
 Both workflows use `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` to pin GitHub Actions JS runtime.
 
@@ -37,8 +66,8 @@ Both workflows use `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` to pin GitHub Actio
 ## Adding a new compiled/React app
 
 1. Create a source directory, e.g. `my-app-source/`.
-2. Set up Vite to produce deterministic output file names (no hashes) in `projects/`.
-3. Add build + copy steps to both CI and deploy workflows, mirroring the Mots Fléchés steps.
+2. Set up Vite to produce deterministic output file names (no hashes) in `projects/` (see template above).
+3. Add build + copy steps to both CI and deploy workflows, mirroring the existing app steps.
 4. Create `projects/my-app.html` referencing the compiled assets.
 5. Add an entry to `projects.js`.
 6. Commit the initial build artifacts.
@@ -51,15 +80,17 @@ Both workflows use `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true` to pin GitHub Actio
 - Dev server: `pnpm dev` inside `mots-fleches-source-app/`
 - Build output: `dist/mots-fleches.js` and `dist/mots-fleches.css` — copy to `projects/` after building
 
-## Task Logger
+## Task Logger source app
 
-- Location: `projects/task-logger.{html,css,js}`
-- Pure vanilla JS, no dependencies, no build step
-- Stores data in `localStorage`
+- Location: `task-logger-source/`
+- Stack: React 19 + TypeScript + Vite + Tailwind CSS 3
+- Dev server: `pnpm dev` inside `task-logger-source/`
+- Build output: `dist/task-logger.js` and `dist/task-logger.css` — copy to `projects/` after building
+- Stores data in `localStorage` (key: `task_logger_data`)
 
 ## Styling conventions
 
-The landing page uses a dark GitHub-style palette defined as CSS variables in `styles.css`. New apps don't need to match exactly but should be readable on dark backgrounds if embedded via the landing page.
+The landing page uses a dark GitHub-style palette defined as CSS variables in `styles.css`. Compiled apps use Tailwind with the same palette as inline arbitrary values. New apps don't need to match exactly but should be readable on dark backgrounds.
 
 ## Workflow rules
 
