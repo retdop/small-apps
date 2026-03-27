@@ -149,17 +149,18 @@ section h2 span { color: var(--text); text-transform: none; letter-spacing: 0; f
 }
 .btn-add:hover { background: var(--accent-hover); }
 
-/* History nav */
-#date-nav {
+/* Calendar nav */
+#cal-nav {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
 }
-#date-nav span {
+#cal-nav span {
   font-size: 0.9rem;
   min-width: 140px;
   text-align: center;
+  font-weight: 600;
 }
 .btn-nav {
   background: var(--bg-card);
@@ -172,6 +173,68 @@ section h2 span { color: var(--text); text-transform: none; letter-spacing: 0; f
   font-size: 1rem;
 }
 .btn-nav:hover { border-color: var(--accent); }
+
+/* Calendar grid */
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 16px;
+}
+
+.cal-dow {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 4px 0;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  position: relative;
+  transition: border-color 0.15s, background 0.15s;
+}
+.cal-day:hover { background: var(--bg-hover); }
+.cal-day.outside { color: var(--text-dim); opacity: 0.35; pointer-events: none; }
+.cal-day.today { border-color: var(--accent); font-weight: 700; }
+.cal-day.selected { background: var(--accent); color: #fff; }
+.cal-day.selected.today { border-color: var(--accent-hover); }
+.cal-day.future { opacity: 0.3; pointer-events: none; }
+
+.cal-dots {
+  display: flex;
+  gap: 2px;
+  margin-top: 2px;
+  height: 5px;
+}
+.cal-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--green);
+}
+.cal-dot.partial { background: var(--text-dim); }
+.cal-day.selected .cal-dot { background: #fff; }
+.cal-day.selected .cal-dot.partial { background: rgba(255,255,255,0.5); }
+
+/* Day detail */
+#day-detail h3 {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
 
 /* Streak */
 .streak-badge {

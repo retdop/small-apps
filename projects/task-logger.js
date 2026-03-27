@@ -65,7 +65,6 @@
   function getStreak(state, taskId) {
     let streak = 0;
     let d = today();
-    // If today is not logged yet, start checking from yesterday
     const todayLog = state.logs[d];
     if (!todayLog || !todayLog[taskId]) {
       d = addDays(d, -1);
@@ -88,9 +87,65 @@
     return streak;
   }
 
+  // ---- Calendar helpers ----
+  function getMonthDays(year, month) {
+    return new Date(year, month + 1, 0).getDate();
+  }
+
+  function getCalendarGrid(year, month) {
+    const firstDow = new Date(year, month, 1).getDay(); // 0=Sun
+    const daysInMonth = getMonthDays(year, month);
+    const prevMonthDays = month === 0
+      ? getMonthDays(year - 1, 11)
+      : getMonthDays(year, month - 1);
+    const cells = [];
+
+    // Leading days from previous month
+    for (let i = firstDow - 1; i >= 0; i--) {
+      const day = prevMonthDays - i;
+      const m = month === 0 ? 11 : month - 1;
+      const y = month === 0 ? year - 1 : year;
+      cells.push({ day, dateStr: pad(y, m, day), outside: true });
+    }
+
+    // Current month
+    for (let d = 1; d <= daysInMonth; d++) {
+      cells.push({ day: d, dateStr: pad(year, month, d), outside: false });
+    }
+
+    // Trailing days to fill last row
+    const remaining = cells.length % 7 === 0 ? 0 : 7 - (cells.length % 7);
+    for (let d = 1; d <= remaining; d++) {
+      const m = month === 11 ? 0 : month + 1;
+      const y = month === 11 ? year + 1 : year;
+      cells.push({ day: d, dateStr: pad(y, m, d), outside: true });
+    }
+
+    return cells;
+  }
+
+  function pad(y, m, d) {
+    return y + "-" + String(m + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+  }
+
+  function getDayCompletionInfo(state, dateStr) {
+    const dayLog = state.logs[dateStr];
+    if (!dayLog) return { logged: 0, due: 0 };
+    const due = state.tasks.filter((t) => isTaskDue(t, dateStr));
+    const logged = due.filter((t) => dayLog[t.id]).length;
+    // Also count logged tasks from deleted tasks
+    const extraLogged = Object.keys(dayLog).filter(
+      (id) => !state.tasks.find((t) => t.id === id)
+    ).length;
+    return { logged: logged + extraLogged, due: due.length };
+  }
+
   // ---- State ----
   let state = load();
-  let historyDate = today();
+  let selectedDate = today();
+  const todayParts = today().split("-");
+  let calYear = parseInt(todayParts[0]);
+  let calMonth = parseInt(todayParts[1]) - 1;
 
   // ---- DOM refs ----
   const $todayDate = document.getElementById("today-date");
@@ -99,11 +154,13 @@
   const $form = document.getElementById("add-form");
   const $taskName = document.getElementById("task-name");
   const $taskFreq = document.getElementById("task-freq");
+  const $calendar = document.getElementById("calendar");
+  const $calMonthLabel = document.getElementById("cal-month-label");
+  const $prevMonth = document.getElementById("prev-month");
+  const $nextMonth = document.getElementById("next-month");
+  const $detailDate = document.getElementById("detail-date");
   const $historyList = document.getElementById("history-list");
-  const $historyDate = document.getElementById("history-date");
   const $historyEmpty = document.getElementById("history-empty");
-  const $prevDay = document.getElementById("prev-day");
-  const $nextDay = document.getElementById("next-day");
 
   // ---- Render today's tasks ----
   function renderToday() {
@@ -153,12 +210,77 @@
     });
   }
 
-  // ---- Render history ----
-  function renderHistory() {
-    $historyDate.textContent = formatDate(historyDate);
-    $nextDay.disabled = historyDate >= today();
+  // ---- Render calendar ----
+  function renderCalendar() {
+    const monthName = new Date(calYear, calMonth, 1).toLocaleDateString(undefined, {
+      month: "long",
+      year: "numeric",
+    });
+    $calMonthLabel.textContent = monthName;
 
-    const dayLog = state.logs[historyDate] || {};
+    // Disable next if viewing current month or future
+    const now = new Date();
+    $nextMonth.disabled =
+      calYear > now.getFullYear() ||
+      (calYear === now.getFullYear() && calMonth >= now.getMonth());
+
+    const grid = getCalendarGrid(calYear, calMonth);
+    $calendar.innerHTML = "";
+
+    // Day-of-week headers
+    const dows = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    dows.forEach((d) => {
+      const el = document.createElement("div");
+      el.className = "cal-dow";
+      el.textContent = d;
+      $calendar.appendChild(el);
+    });
+
+    const todayStr = today();
+
+    grid.forEach((cell) => {
+      const btn = document.createElement("button");
+      btn.className = "cal-day";
+      if (cell.outside) btn.classList.add("outside");
+      if (cell.dateStr === todayStr) btn.classList.add("today");
+      if (cell.dateStr === selectedDate) btn.classList.add("selected");
+      if (cell.dateStr > todayStr) btn.classList.add("future");
+
+      const num = document.createElement("span");
+      num.textContent = cell.day;
+      btn.appendChild(num);
+
+      // Completion dots
+      if (!cell.outside && cell.dateStr <= todayStr) {
+        const info = getDayCompletionInfo(state, cell.dateStr);
+        if (info.logged > 0) {
+          const dots = document.createElement("div");
+          dots.className = "cal-dots";
+          const dot = document.createElement("div");
+          dot.className = "cal-dot";
+          if (info.due > 0 && info.logged < info.due) {
+            dot.classList.add("partial");
+          }
+          dots.appendChild(dot);
+          btn.appendChild(dots);
+        }
+      }
+
+      btn.addEventListener("click", () => {
+        selectedDate = cell.dateStr;
+        renderCalendar();
+        renderDayDetail();
+      });
+
+      $calendar.appendChild(btn);
+    });
+  }
+
+  // ---- Render day detail ----
+  function renderDayDetail() {
+    $detailDate.textContent = formatDate(selectedDate);
+
+    const dayLog = state.logs[selectedDate] || {};
     const entries = state.tasks
       .filter((t) => dayLog[t.id])
       .map((t) => ({ task: t, time: dayLog[t.id] }));
@@ -210,7 +332,8 @@
     }
     save(state);
     renderToday();
-    if (historyDate === dateStr) renderHistory();
+    renderCalendar();
+    if (selectedDate === dateStr) renderDayDetail();
   }
 
   function deleteTask(taskId) {
@@ -218,7 +341,8 @@
     state.tasks = state.tasks.filter((t) => t.id !== taskId);
     save(state);
     renderToday();
-    renderHistory();
+    renderCalendar();
+    renderDayDetail();
   }
 
   function addTask(name, freq) {
@@ -242,15 +366,18 @@
     $taskName.focus();
   });
 
-  $prevDay.addEventListener("click", () => {
-    historyDate = addDays(historyDate, -1);
-    renderHistory();
+  $prevMonth.addEventListener("click", () => {
+    calMonth--;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
   });
 
-  $nextDay.addEventListener("click", () => {
-    if (historyDate < today()) {
-      historyDate = addDays(historyDate, 1);
-      renderHistory();
+  $nextMonth.addEventListener("click", () => {
+    const now = new Date();
+    if (calYear < now.getFullYear() || calMonth < now.getMonth()) {
+      calMonth++;
+      if (calMonth > 11) { calMonth = 0; calYear++; }
+      renderCalendar();
     }
   });
 
@@ -270,5 +397,6 @@
 
   // ---- Init ----
   renderToday();
-  renderHistory();
+  renderCalendar();
+  renderDayDetail();
 })();

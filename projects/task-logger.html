@@ -35,13 +35,17 @@
 
       <section id="history-section">
         <h2>History</h2>
-        <div id="date-nav">
-          <button id="prev-day" class="btn btn-nav">&larr;</button>
-          <span id="history-date"></span>
-          <button id="next-day" class="btn btn-nav">&rarr;</button>
+        <div id="cal-nav">
+          <button id="prev-month" class="btn btn-nav">&larr;</button>
+          <span id="cal-month-label"></span>
+          <button id="next-month" class="btn btn-nav">&rarr;</button>
         </div>
-        <div id="history-list" class="task-list"></div>
-        <p id="history-empty" class="empty-state">No logs for this day.</p>
+        <div id="calendar" class="calendar"></div>
+        <div id="day-detail">
+          <h3 id="detail-date"></h3>
+          <div id="history-list" class="task-list"></div>
+          <p id="history-empty" class="empty-state">No logs for this day.</p>
+        </div>
       </section>
     </div>
     <script src="task-logger.js"></script>
