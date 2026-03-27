@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task Logger</title>
+    <link rel="stylesheet" href="task-logger.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>Task Logger</h1>
+        <p class="subtitle">Track your daily routine</p>
+      </header>
+
+      <section id="log-section">
+        <h2>Today <span id="today-date"></span></h2>
+        <div id="task-list" class="task-list"></div>
+        <p id="empty-state" class="empty-state">No tasks yet. Add one below.</p>
+      </section>
+
+      <section id="add-section">
+        <h2>Manage Tasks</h2>
+        <form id="add-form">
+          <input type="text" id="task-name" placeholder="Task name, e.g. Shoulder stretches" required />
+          <select id="task-freq">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="weekdays">Weekdays</option>
+            <option value="weekends">Weekends</option>
+          </select>
+          <button type="submit" class="btn btn-add">Add Task</button>
+        </form>
+      </section>
+
+      <section id="history-section">
+        <h2>History</h2>
+        <div id="date-nav">
+          <button id="prev-day" class="btn btn-nav">&larr;</button>
+          <span id="history-date"></span>
+          <button id="next-day" class="btn btn-nav">&rarr;</button>
+        </div>
+        <div id="history-list" class="task-list"></div>
+        <p id="history-empty" class="empty-state">No logs for this day.</p>
+      </section>
+    </div>
+    <script src="task-logger.js"></script>
+  </body>
+</html>

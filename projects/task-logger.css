@@ -1,0 +1,188 @@
+:root {
+  --bg: #0d1117;
+  --bg-card: #161b22;
+  --bg-hover: #1c2128;
+  --text: #e6edf3;
+  --text-dim: #8b949e;
+  --accent: #58a6ff;
+  --accent-hover: #79c0ff;
+  --green: #3fb950;
+  --green-bg: rgba(63, 185, 80, 0.15);
+  --red: #f85149;
+  --border: #30363d;
+  --radius: 10px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+#app {
+  max-width: 540px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+}
+
+header { padding: 24px 0 32px; }
+header h1 { font-size: 1.6rem; font-weight: 700; }
+.subtitle { color: var(--text-dim); font-size: 0.9rem; margin-top: 4px; }
+
+section { margin-bottom: 36px; }
+section h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.8rem;
+}
+section h2 span { color: var(--text); text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
+
+/* Task list */
+.task-list { display: flex; flex-direction: column; gap: 6px; }
+
+.task-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  transition: border-color 0.15s;
+}
+.task-row:hover { border-color: #484f58; }
+
+.task-row.done {
+  border-color: var(--green);
+  background: var(--green-bg);
+}
+
+.task-check {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  color: transparent;
+  font-size: 14px;
+}
+.task-check:hover { border-color: var(--green); }
+.task-row.done .task-check {
+  border-color: var(--green);
+  background: var(--green);
+  color: #fff;
+}
+
+.task-info { flex: 1; min-width: 0; }
+.task-info .name { font-weight: 500; font-size: 0.95rem; }
+.task-info .freq { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+.task-info .log-time { font-size: 0.72rem; color: var(--green); margin-top: 2px; }
+
+.task-delete {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 4px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.task-row:hover .task-delete { opacity: 1; }
+.task-delete:hover { color: var(--red); }
+
+.empty-state {
+  color: var(--text-dim);
+  font-size: 0.88rem;
+  text-align: center;
+  padding: 24px 0;
+}
+
+/* Add form */
+#add-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#add-form input,
+#add-form select {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  outline: none;
+}
+#add-form input { flex: 1; min-width: 180px; }
+#add-form input:focus,
+#add-form select:focus { border-color: var(--accent); }
+#add-form select { min-width: 120px; }
+
+.btn {
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 10px 18px;
+  transition: background 0.15s;
+}
+.btn-add {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-add:hover { background: var(--accent-hover); }
+
+/* History nav */
+#date-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+#date-nav span {
+  font-size: 0.9rem;
+  min-width: 140px;
+  text-align: center;
+}
+.btn-nav {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  width: 36px; height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+.btn-nav:hover { border-color: var(--accent); }
+
+/* Streak */
+.streak-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  color: var(--green);
+  margin-left: 8px;
+  font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  #add-form { flex-direction: column; }
+  #add-form input, #add-form select { min-width: 0; width: 100%; }
+}
