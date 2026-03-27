@@ -137,7 +137,7 @@ export default function App() {
     const prev = stats[key] || { e: 0, s: 0, last: 0, streak: 0 };
     const upd = { e: prev.e + (ok ? 0 : 1), s: prev.s + (ok ? 1 : 0), last: Date.now(), streak: ok ? (prev.streak || 0) + 1 : 0 };
     save({ ...stats, [key]: upd });
-    if (ok) setScore(s => s + 1); else setSessionErrors(p => [...p, item]);
+    if (ok) setScore(s => s + (showHint ? 0.5 : 1)); else setSessionErrors(p => [...p, item]);
     setLastResult({ word: cur, def: item.def, ok, streak: upd.streak });
     advance();
   };
