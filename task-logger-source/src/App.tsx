@@ -182,15 +182,15 @@ function getCompletionProgress(
   const start = task.created.slice(0, 10);
   const endDate = addDays(start, task.totalDuration - 1);
   const today = todayStr();
-  const cap = today < endDate ? today : endDate;
+  const logCap = today < endDate ? today : endDate;
 
   let total = 0;
   let logged = 0;
   let d = start;
-  while (d <= cap) {
+  while (d <= endDate) {
     if (isTaskDue(task, d)) {
       total++;
-      if (state.logs[d]?.[task.id]) logged++;
+      if (d <= logCap && state.logs[d]?.[task.id]) logged++;
     }
     d = addDays(d, 1);
   }
@@ -519,8 +519,8 @@ export default function App() {
                             }}
                           />
                         </div>
-                        <span className="text-[0.7rem] text-[#8b949e] tabular-nums w-8 text-right">
-                          {pct}%
+                        <span className="text-[0.7rem] text-[#8b949e] tabular-nums whitespace-nowrap text-right">
+                          {progress.logged}/{progress.total}
                         </span>
                       </div>
                     )}
@@ -850,8 +850,8 @@ export default function App() {
                               }}
                             />
                           </div>
-                          <span className="text-[0.7rem] text-[#8b949e] tabular-nums w-8 text-right">
-                            {pct}%
+                          <span className="text-[0.7rem] text-[#8b949e] tabular-nums whitespace-nowrap text-right">
+                            {progress.logged}/{progress.total}
                           </span>
                         </div>
                       )}
