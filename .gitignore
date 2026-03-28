@@ -205,3 +205,12 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# Compiled app build artifacts (built by CI/deploy workflow)
+projects/mots-fleches.js
+projects/mots-fleches.css
+projects/task-logger.js
+projects/task-logger.css
+projects/routine-tracker.js
+projects/routine-tracker.css
