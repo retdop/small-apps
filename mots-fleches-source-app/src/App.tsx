@@ -398,7 +398,21 @@ export default function App() {
             {detailsOpen ? "Masquer le détail" : "Tous les mots"}
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <ScrollArea className="h-72 mt-2">
+            <div className="flex gap-2 mt-2 mb-3">
+              <Button variant="outline" size="sm" className="flex-1 text-xs rounded-sm"
+                onClick={exportStats}>
+                Exporter
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1 text-xs rounded-sm"
+                onClick={() => importFileRef.current?.click()}>
+                Importer
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1 text-xs text-destructive border-destructive rounded-sm"
+                onClick={async () => { await save({}); restart(WORDS); }}>
+                Réinitialiser
+              </Button>
+            </div>
+            <ScrollArea className="h-72">
               <div className="space-y-0">
                 {sortedWords.map((w) => {
                   const s = stats[wordKey(w)] || { e: 0, s: 0 };
@@ -414,29 +428,15 @@ export default function App() {
                   );
                 })}
               </div>
-              <div className="flex gap-2 mt-3">
-                <Button variant="outline" size="sm" className="flex-1 text-xs rounded-sm"
-                  onClick={exportStats}>
-                  Exporter
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1 text-xs rounded-sm"
-                  onClick={() => importFileRef.current?.click()}>
-                  Importer
-                </Button>
-                <Button variant="outline" size="sm" className="flex-1 text-xs text-destructive border-destructive rounded-sm"
-                  onClick={async () => { await save({}); restart(WORDS); }}>
-                  Réinitialiser
-                </Button>
-              </div>
-              <input
-                ref={importFileRef}
-                type="file"
-                accept=".json,application/json"
-                onChange={handleImportStats}
-                className="hidden"
-                aria-hidden="true"
-              />
             </ScrollArea>
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".json,application/json"
+              onChange={handleImportStats}
+              className="hidden"
+              aria-hidden="true"
+            />
           </CollapsibleContent>
         </Collapsible>
       </div>
