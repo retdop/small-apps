@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 // ---- Types ----
 interface Focus {
@@ -89,20 +89,81 @@ const sectionTitle =
 export default function App() {
   const [state, setState] = useState<AppState>(loadState);
   const [tab, setTab] = useState<Tab>("plan");
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const update = useCallback((next: AppState) => {
     saveState(next);
     setState(next);
   }, []);
 
+  function exportData() {
+    const json = JSON.stringify(state, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `routine-tracker-${todayStr()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string) as AppState;
+        if (!Array.isArray(parsed.focuses) || !Array.isArray(parsed.exercises) || !Array.isArray(parsed.sessions)) {
+          alert("Invalid file: not a valid Routine Tracker export.");
+          return;
+        }
+        if (!confirm("This will replace all current data. Continue?")) return;
+        update(parsed);
+      } catch {
+        alert("Failed to read file. Make sure it is a valid JSON export.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
   return (
     <div className="min-h-screen bg-[#0d1117] text-[#e6edf3]">
       <div className="max-w-[600px] mx-auto px-4 pb-16">
         <header className="py-6 pb-4">
-          <h1 className="text-[1.6rem] font-bold">Routine Tracker</h1>
-          <p className="text-[#8b949e] text-[0.9rem] mt-1">
-            Plan and track your strength &amp; mobility training
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-[1.6rem] font-bold">Routine Tracker</h1>
+              <p className="text-[#8b949e] text-[0.9rem] mt-1">
+                Plan and track your strength &amp; mobility training
+              </p>
+            </div>
+            <div className="flex gap-1.5 mt-1 flex-shrink-0">
+              <button
+                type="button"
+                onClick={exportData}
+                className="bg-transparent border border-[#30363d] hover:border-[#484f58] text-[#8b949e] hover:text-[#e6edf3] rounded-[8px] px-3 py-1.5 text-[0.82rem] transition-colors cursor-pointer"
+              >
+                Export
+              </button>
+              <button
+                type="button"
+                onClick={() => importFileRef.current?.click()}
+                className="bg-transparent border border-[#30363d] hover:border-[#484f58] text-[#8b949e] hover:text-[#e6edf3] rounded-[8px] px-3 py-1.5 text-[0.82rem] transition-colors cursor-pointer"
+              >
+                Import
+              </button>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={handleImport}
+                className="hidden"
+                aria-hidden="true"
+              />
+            </div>
+          </div>
         </header>
 
         {/* Tab bar */}

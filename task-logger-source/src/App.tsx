@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 
 // ---- Types ----
 type Freq = "daily" | "weekly" | "weekdays" | "weekends";
@@ -264,6 +264,7 @@ export default function App() {
   const [editName, setEditName] = useState("");
   const [editFreq, setEditFreq] = useState<Freq>("daily");
   const [editDuration, setEditDuration] = useState("");
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const updateState = useCallback((next: AppState) => {
     saveState(next);
@@ -316,6 +317,38 @@ export default function App() {
     updateState({ ...state, tasks: [...state.tasks, newTask] });
     setTaskName("");
     setTaskDuration("");
+  }
+
+  function exportData() {
+    const json = JSON.stringify(state, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `task-logger-${todayStr()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string) as AppState;
+        if (!Array.isArray(parsed.tasks) || typeof parsed.logs !== "object") {
+          alert("Invalid file: not a valid Task Logger export.");
+          return;
+        }
+        if (!confirm("This will replace all current data. Continue?")) return;
+        updateState(parsed);
+      } catch {
+        alert("Failed to read file. Make sure it is a valid JSON export.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
   }
 
   function startEdit(task: Task) {
@@ -633,6 +666,33 @@ export default function App() {
                 Add Task
               </button>
             </form>
+
+            {/* Import / Export */}
+            <div className="mt-4 pt-4 border-t border-[#21262d] flex items-center gap-2">
+              <span className="text-[0.75rem] text-[#8b949e] mr-1">Data</span>
+              <button
+                type="button"
+                onClick={exportData}
+                className="bg-transparent border border-[#30363d] hover:border-[#484f58] text-[#8b949e] hover:text-[#e6edf3] rounded-[8px] px-3 py-1.5 text-[0.82rem] transition-colors cursor-pointer"
+              >
+                Export
+              </button>
+              <button
+                type="button"
+                onClick={() => importFileRef.current?.click()}
+                className="bg-transparent border border-[#30363d] hover:border-[#484f58] text-[#8b949e] hover:text-[#e6edf3] rounded-[8px] px-3 py-1.5 text-[0.82rem] transition-colors cursor-pointer"
+              >
+                Import
+              </button>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={handleImport}
+                className="hidden"
+                aria-hidden="true"
+              />
+            </div>
           </section>
         )}
 

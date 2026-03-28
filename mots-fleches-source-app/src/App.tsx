@@ -28,6 +28,7 @@ export default function App() {
   const [lastResult, setLastResult] = useState<LastResult | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   const getPool = useCallback(() => {
     if (!selThemes) return WORDS;
@@ -151,6 +152,39 @@ export default function App() {
     setLastResult({ word: cur, def: item.def, ok: false, skipped: true, streak: 0 });
     advance();
   };
+
+  function exportStats() {
+    const json = JSON.stringify(stats, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `mots-fleches-stats-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImportStats(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string) as Stats;
+        if (typeof parsed !== "object" || Array.isArray(parsed)) {
+          alert("Fichier invalide : ce n'est pas un export valide.");
+          return;
+        }
+        if (!confirm("Cela remplacera toutes les statistiques actuelles. Continuer ?")) return;
+        await save(parsed);
+        restart(getPool());
+      } catch {
+        alert("Échec de lecture du fichier. Vérifiez qu'il s'agit d'un export JSON valide.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
 
   const totalW = WORDS.length;
   const { learned, trouble, unseen } = useMemo(() => ({
@@ -380,10 +414,28 @@ export default function App() {
                   );
                 })}
               </div>
-              <Button variant="outline" size="sm" className="w-full mt-3 text-xs text-destructive border-destructive rounded-sm"
-                onClick={async () => { await save({}); restart(WORDS); }}>
-                Réinitialiser les statistiques
-              </Button>
+              <div className="flex gap-2 mt-3">
+                <Button variant="outline" size="sm" className="flex-1 text-xs rounded-sm"
+                  onClick={exportStats}>
+                  Exporter
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 text-xs rounded-sm"
+                  onClick={() => importFileRef.current?.click()}>
+                  Importer
+                </Button>
+                <Button variant="outline" size="sm" className="flex-1 text-xs text-destructive border-destructive rounded-sm"
+                  onClick={async () => { await save({}); restart(WORDS); }}>
+                  Réinitialiser
+                </Button>
+              </div>
+              <input
+                ref={importFileRef}
+                type="file"
+                accept=".json,application/json"
+                onChange={handleImportStats}
+                className="hidden"
+                aria-hidden="true"
+              />
             </ScrollArea>
           </CollapsibleContent>
         </Collapsible>
