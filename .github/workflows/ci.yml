@@ -37,6 +37,29 @@ jobs:
           pnpm install --frozen-lockfile
           npx vite build
 
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Test mots-fléchés
+        working-directory: mots-fleches-source-app
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test
+
+      - name: Test task-logger
+        working-directory: task-logger-source
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm test
+
   validate-html:
     runs-on: ubuntu-latest
     steps:
