@@ -1,8 +1,8 @@
-# small-apps
+# escaped-the-lab
 
-A collection of small experiments and projects, deployed as a static site via GitHub Pages.
+Experiments that made it to production, deployed as a static site via GitHub Pages.
 
-Live at: **https://retdop.github.io/small-apps**
+Live at: **https://retdop.github.io/escaped-the-lab**
 
 ## Structure
 
@@ -95,5 +95,5 @@ To preview integrated in the full site, build and serve from the root:
 
 ```sh
 pnpm build              # outputs to dist/
-npx serve ..            # serve from small-apps root
+npx serve ..            # serve from escaped-the-lab root
 ```
