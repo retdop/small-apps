@@ -97,9 +97,3 @@ To preview integrated in the full site, build and serve from the root:
 pnpm build              # outputs to dist/
 npx serve ..            # serve from small-apps root
 ```
-
-## Setup (first time)
-
-1. Go to **Settings > Pages** in the GitHub repo.
-2. Set source to **GitHub Actions**.
-3. Push to `main` to trigger the first deployment.
