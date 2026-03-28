@@ -215,6 +215,26 @@ function GearIcon() {
   );
 }
 
+function PencilIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+    </svg>
+  );
+}
+
 // ---- Task row shared styles ----
 const rowBase =
   "flex items-center gap-3 rounded-[10px] border px-4 py-3 transition-colors";
@@ -240,6 +260,10 @@ export default function App() {
   const [taskDuration, setTaskDuration] = useState("");
   const [calYear, setCalYear] = useState(parseInt(todayParts[0]));
   const [calMonth, setCalMonth] = useState(parseInt(todayParts[1]) - 1);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editFreq, setEditFreq] = useState<Freq>("daily");
+  const [editDuration, setEditDuration] = useState("");
 
   const updateState = useCallback((next: AppState) => {
     saveState(next);
@@ -292,6 +316,34 @@ export default function App() {
     updateState({ ...state, tasks: [...state.tasks, newTask] });
     setTaskName("");
     setTaskDuration("");
+  }
+
+  function startEdit(task: Task) {
+    setEditingId(task.id);
+    setEditName(task.name);
+    setEditFreq(task.freq);
+    setEditDuration(task.totalDuration ? String(task.totalDuration) : "");
+  }
+
+  function saveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    const name = editName.trim();
+    if (!name || !editingId) return;
+    const duration = parseInt(editDuration);
+    updateState({
+      ...state,
+      tasks: state.tasks.map((t) =>
+        t.id === editingId
+          ? {
+              ...t,
+              name,
+              freq: editFreq,
+              ...(duration > 0 ? { totalDuration: duration } : { totalDuration: undefined }),
+            }
+          : t
+      ),
+    });
+    setEditingId(null);
   }
 
   // Calendar navigation
@@ -457,6 +509,96 @@ export default function App() {
             <h2 className="text-[0.8rem] font-semibold text-[#8b949e] uppercase tracking-[0.04em] mb-3">
               Manage Tasks
             </h2>
+
+            {/* Existing tasks */}
+            {state.tasks.length > 0 && (
+              <div className="flex flex-col gap-1.5 mb-4">
+                {state.tasks.map((task) =>
+                  editingId === task.id ? (
+                    <form
+                      key={task.id}
+                      onSubmit={saveEdit}
+                      className="flex gap-2 flex-wrap items-center rounded-[10px] border border-[#58a6ff] bg-[#1c2128] px-3 py-2.5"
+                    >
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        required
+                        autoFocus
+                        className="flex-1 min-w-[140px] bg-[#0d1117] border border-[#30363d] rounded-[8px] text-[#e6edf3] px-3 py-1.5 text-[0.88rem] outline-none focus:border-[#58a6ff]"
+                      />
+                      <select
+                        value={editFreq}
+                        onChange={(e) => setEditFreq(e.target.value as Freq)}
+                        className="bg-[#0d1117] border border-[#30363d] rounded-[8px] text-[#e6edf3] px-3 py-1.5 text-[0.88rem] outline-none focus:border-[#58a6ff]"
+                      >
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="weekdays">Weekdays</option>
+                        <option value="weekends">Weekends</option>
+                      </select>
+                      <input
+                        type="number"
+                        value={editDuration}
+                        onChange={(e) => setEditDuration(e.target.value)}
+                        placeholder="Days goal"
+                        min="1"
+                        className="w-[110px] bg-[#0d1117] border border-[#30363d] rounded-[8px] text-[#e6edf3] px-3 py-1.5 text-[0.88rem] outline-none focus:border-[#58a6ff]"
+                      />
+                      <div className="flex gap-1.5">
+                        <button
+                          type="submit"
+                          className="bg-[#58a6ff] hover:bg-[#79c0ff] text-white rounded-[8px] px-3 py-1.5 text-[0.82rem] font-semibold transition-colors border-0 cursor-pointer"
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingId(null)}
+                          className="bg-transparent border border-[#30363d] hover:border-[#484f58] text-[#8b949e] hover:text-[#e6edf3] rounded-[8px] px-3 py-1.5 text-[0.82rem] transition-colors cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div
+                      key={task.id}
+                      className="group flex items-center gap-3 rounded-[10px] border border-[#30363d] bg-[#161b22] px-4 py-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-[0.92rem]">{task.name}</div>
+                        <div className="text-[0.73rem] text-[#8b949e] mt-0.5">
+                          {capitalize(task.freq)}
+                          {task.totalDuration && (
+                            <span className="ml-1.5">· {task.totalDuration}d goal</span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        title="Edit task"
+                        onClick={() => startEdit(task)}
+                        className="text-[#8b949e] hover:text-[#58a6ff] p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <PencilIcon />
+                      </button>
+                      <button
+                        type="button"
+                        title="Delete task"
+                        onClick={() => deleteTask(task.id)}
+                        className="text-[#8b949e] hover:text-[#f85149] p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity text-[1.1rem] leading-none"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+
+            {/* Add new task */}
             <form onSubmit={addTask} className="flex gap-2 flex-wrap">
               <input
                 type="text"
