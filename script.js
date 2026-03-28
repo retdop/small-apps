@@ -4,10 +4,7 @@ document.addEventListener("DOMContentLoaded", function () {
   grid.innerHTML = PROJECTS.map(function (p) {
     var card =
       '<article class="card">' +
-        '<div class="card-header">' +
-          "<h2>" + p.title + "</h2>" +
-          '<span class="card-date">' + p.date + "</span>" +
-        "</div>" +
+        "<h2>" + p.title + "</h2>" +
         "<p>" + p.description + "</p>" +
       "</article>";
 
