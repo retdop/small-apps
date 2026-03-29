@@ -8,10 +8,10 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Toggle } from "@/components/ui/toggle";
-import { ExternalLink, ChevronDown, RotateCcw, ArrowRight, Lightbulb, SkipForward, Check } from "lucide-react";
+import { ExternalLink, ChevronDown, RotateCcw, ArrowRight, Lightbulb, SkipForward, Check, ThumbsUp } from "lucide-react";
 
 interface DeckItem { word: Word; def: string; }
-interface LastResult { word: Word; def: string; ok: boolean; streak: number; skipped?: boolean; }
+interface LastResult { word: Word; def: string; ok: boolean; streak: number; skipped?: boolean; facile?: boolean; }
 
 export default function App() {
   const [stats, setStats] = useState<Stats>({});
@@ -24,17 +24,29 @@ export default function App() {
   const [showHint, setShowHint] = useState(false);
   const [sessionErrors, setSessionErrors] = useState<DeckItem[]>([]);
   const [selThemes, setSelThemes] = useState<string[] | null>(null);
+  const [onlyHard, setOnlyHard] = useState(false);
   const [started, setStarted] = useState(false);
   const [lastResult, setLastResult] = useState<LastResult | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
 
-  const getPool = useCallback(() => {
-    if (!selThemes) return WORDS;
-    const cats = THEMES.filter(t => selThemes.includes(t.id)).flatMap(t => t.cats);
-    return WORDS.filter(w => cats.includes(w.cat));
-  }, [selThemes]);
+  // computePool takes explicit args so toggle handlers can use updated values before state settles
+  const computePool = useCallback((themes: string[] | null, hardOnly: boolean) => {
+    let pool = !themes ? WORDS : (() => {
+      const cats = THEMES.filter(t => themes.includes(t.id)).flatMap(t => t.cats);
+      return WORDS.filter(w => cats.includes(w.cat));
+    })();
+    if (hardOnly) {
+      pool = pool.filter(w => {
+        const s = statsRef.current[wordKey(w)];
+        return s && s.e > s.s && !s.f;
+      });
+    }
+    return pool;
+  }, []);
+
+  const getPool = useCallback(() => computePool(selThemes, onlyHard), [computePool, selThemes, onlyHard]);
 
   const [storageOk, setStorageOk] = useState<boolean | null>(null);
 
@@ -120,11 +132,11 @@ export default function App() {
 
   const restart = useCallback((pool?: Word[]) => {
     const p = pool || getPool();
-    setDeck(buildSmartDeck(p, stats));
+    setDeck(buildSmartDeck(p, statsRef.current));
     setIdx(0); setScore(0); setInput(""); setLastResult(null);
     setShowHint(false); setSessionErrors([]); setStarted(true);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [stats, getPool]);
+  }, [getPool]);
 
   const advance = () => {
     setIdx(i => i + 1); setInput(""); setShowHint(false);
@@ -150,6 +162,15 @@ export default function App() {
     save({ ...stats, [key]: { ...prev, e: prev.e + 1, last: Date.now(), streak: 0 } });
     setSessionErrors(p => [...p, item]);
     setLastResult({ word: cur, def: item.def, ok: false, skipped: true, streak: 0 });
+    advance();
+  };
+
+  const markFacile = () => {
+    const item = deck[idx];
+    const cur = item.word, key = wordKey(cur);
+    const prev = stats[key] || { e: 0, s: 0, last: 0, streak: 0 };
+    save({ ...stats, [key]: { ...prev, last: Date.now(), f: Date.now() } });
+    setLastResult({ word: cur, def: item.def, ok: true, facile: true, streak: prev.streak || 0 });
     advance();
   };
 
@@ -187,10 +208,11 @@ export default function App() {
   }
 
   const totalW = WORDS.length;
-  const { learned, trouble, unseen } = useMemo(() => ({
-    learned: WORDS.filter(w => { const s = stats[wordKey(w)]; return s && s.s > s.e && s.s + s.e >= 2; }).length,
-    trouble: WORDS.filter(w => { const s = stats[wordKey(w)]; return s && s.e > s.s; }).length,
+  const { learned, trouble, unseen, facileCount } = useMemo(() => ({
+    learned: WORDS.filter(w => { const s = stats[wordKey(w)]; return s && !s.f && s.s > s.e && s.s + s.e >= 2; }).length,
+    trouble: WORDS.filter(w => { const s = stats[wordKey(w)]; return s && !s.f && s.e > s.s; }).length,
     unseen: WORDS.filter(w => !stats[wordKey(w)]).length,
+    facileCount: WORDS.filter(w => stats[wordKey(w)]?.f).length,
   }), [stats]);
   const sortedWords = useMemo(() => [...WORDS].sort((a, b) => {
     const sa = stats[wordKey(a)] || { e: 0, s: 0 }, sb = stats[wordKey(b)] || { e: 0, s: 0 };
@@ -198,6 +220,7 @@ export default function App() {
   }), [stats]);
   const current = deck[idx];
   const done = started && idx >= deck.length && deck.length > 0;
+  const emptyPool = started && deck.length === 0;
   const progressPct = deck.length > 0 ? (idx / deck.length) * 100 : 0;
 
   if (loading) return (
@@ -219,6 +242,7 @@ export default function App() {
             <span><b className="text-[hsl(153,40%,30%)]">{learned}</b> maîtrisé{learned > 1 ? "s" : ""}</span>
             <span><b className="text-destructive">{trouble}</b> difficile{trouble > 1 ? "s" : ""}</span>
             <span><b>{unseen}</b> nouveau{unseen > 1 ? "x" : ""}</span>
+            {facileCount > 0 && <span><b className="text-amber-600">{facileCount}</b> facile{facileCount > 1 ? "s" : ""}</span>}
           </div>
           <div className="mt-2.5 h-1 rounded-sm bg-muted overflow-hidden flex">
             <div className="h-full bg-[hsl(153,40%,30%)] transition-all duration-500" style={{ width: `${(learned / totalW) * 100}%` }} />
@@ -231,7 +255,7 @@ export default function App() {
 
         {/* Theme pills */}
         <div className="flex flex-wrap gap-1.5 justify-center mb-5">
-          <Toggle pressed={!selThemes} onPressedChange={() => { setSelThemes(null); restart(WORDS); }}
+          <Toggle pressed={!selThemes} onPressedChange={() => { setSelThemes(null); restart(computePool(null, onlyHard)); }}
             size="sm" variant="outline"
             className="h-7 px-3 text-xs font-semibold data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-sm"
           >Tous</Toggle>
@@ -244,32 +268,48 @@ export default function App() {
                 else if (on) { const r = selThemes.filter(x => x !== t.id); next = r.length === 0 ? null : r; }
                 else next = [...selThemes, t.id];
                 setSelThemes(next);
-                const cats = next ? THEMES.filter(th => next!.includes(th.id)).flatMap(th => th.cats) : null;
-                restart(cats ? WORDS.filter(w => cats.includes(w.cat)) : WORDS);
+                restart(computePool(next, onlyHard));
               }}
                 size="sm" variant="outline"
                 className="h-7 px-2.5 text-[11px] font-semibold data-[state=on]:bg-destructive data-[state=on]:text-white rounded-sm"
               >{t.label}</Toggle>
             );
           })}
+          <Toggle pressed={onlyHard} onPressedChange={() => {
+            const next = !onlyHard;
+            setOnlyHard(next);
+            restart(computePool(selThemes, next));
+          }}
+            size="sm" variant="outline"
+            className="h-7 px-2.5 text-[11px] font-semibold data-[state=on]:bg-amber-600 data-[state=on]:text-white rounded-sm"
+          >Difficiles ✗</Toggle>
         </div>
 
         {/* Result banner */}
         {lastResult && (
           <div onClick={() => setLastResult(null)}
             className={`animate-slide-down flex items-center gap-2.5 px-3.5 py-2.5 mb-4 rounded-sm cursor-pointer border-l-4 ${
+              lastResult.facile ? "bg-amber-50 border-l-amber-500" :
               lastResult.ok ? "bg-[hsl(140,40%,94%)] border-l-[hsl(153,40%,30%)]" : "bg-[hsl(0,60%,95%)] border-l-destructive"
             }`}>
-            <span className={`text-base font-bold tracking-[3px] ${lastResult.ok ? "text-[hsl(153,40%,30%)]" : "text-destructive"}`}
+            <span className={`text-base font-bold tracking-[3px] ${lastResult.facile ? "text-amber-600" : lastResult.ok ? "text-[hsl(153,40%,30%)]" : "text-destructive"}`}
               style={{ fontFamily: "'JetBrains Mono', monospace" }}>
               {lastResult.word.mot}
             </span>
             <span className="flex-1 text-xs text-foreground italic truncate">{lastResult.def}</span>
-            {lastResult.ok && lastResult.streak >= 3 && <span className="text-xs">🔥{lastResult.streak}</span>}
+            {lastResult.facile && <span className="text-xs text-amber-600 font-semibold">facile</span>}
+            {!lastResult.facile && lastResult.ok && lastResult.streak >= 3 && <span className="text-xs">🔥{lastResult.streak}</span>}
             <a href={wiktUrl(lastResult.word)} target="_blank" rel="noopener noreferrer"
               onClick={e => e.stopPropagation()} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
+          </div>
+        )}
+
+        {/* Empty pool message */}
+        {emptyPool && (
+          <div className="text-center py-8 text-muted-foreground italic text-sm">
+            Aucun mot difficile pour le moment — continuez à pratiquer !
           </div>
         )}
 
@@ -338,6 +378,12 @@ export default function App() {
                 <Button size="sm" className="text-xs rounded-sm gap-1" disabled={!input.trim()} onClick={submit}>
                   <Check className="w-3 h-3" /> Valider
                   <kbd className="hidden sm:inline-block ml-1 px-1 py-0.5 text-[9px] font-mono bg-muted rounded border border-border text-muted-foreground">⏎</kbd>
+                </Button>
+              </div>
+              <div className="flex justify-center mt-2">
+                <Button variant="ghost" size="sm" className="text-xs rounded-sm gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                  onClick={markFacile}>
+                  <ThumbsUp className="w-3 h-3" /> Facile
                 </Button>
               </div>
             </CardContent>
@@ -417,12 +463,14 @@ export default function App() {
                 {sortedWords.map((w) => {
                   const s = stats[wordKey(w)] || { e: 0, s: 0 };
                   const t = s.e + s.s, pct = t > 0 ? Math.round(s.s / t * 100) : -1;
+                  const isFacile = !!(stats[wordKey(w)]?.f);
                   return (
                     <div key={wordKey(w)} className="flex items-center gap-2 py-1 border-b border-border text-xs">
                       <span className="min-w-[70px] font-bold tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>{w.mot}</span>
                       <span className="flex-1 text-muted-foreground italic truncate">{w.defs[0]}</span>
+                      {isFacile && <span className="text-[10px] text-amber-600 font-bold">facile</span>}
                       <span className={`min-w-[30px] text-right text-[10px] font-bold ${
-                        pct < 0 ? "text-muted-foreground/50" : pct >= 80 ? "text-[hsl(153,40%,30%)]" : pct >= 50 ? "text-muted-foreground" : "text-destructive"
+                        isFacile ? "text-amber-600" : pct < 0 ? "text-muted-foreground/50" : pct >= 80 ? "text-[hsl(153,40%,30%)]" : pct >= 50 ? "text-muted-foreground" : "text-destructive"
                       }`}>{pct < 0 ? "—" : `${pct}%`}</span>
                     </div>
                   );
