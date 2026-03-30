@@ -6,6 +6,8 @@ import {
   wiktUrl,
   buildSmartDeck,
   WORDS,
+  STORAGE_KEY,
+  ACTIVITY_KEY,
   type Word,
   type Stats,
 } from "../data";
@@ -183,5 +185,79 @@ describe("buildSmartDeck", () => {
     const deck = buildSmartDeck([w1, w2], stats);
     // w1 (stale) should appear before w2 (recent)
     expect(deck[0].word).toEqual(w1);
+  });
+
+  it("excludes words with b (burned) flag from the deck", () => {
+    const [w1, w2] = WORDS.slice(0, 2);
+    const stats: Stats = {
+      [wordKey(w1)]: { e: 0, s: 5, last: Date.now(), streak: 5, b: Date.now() },
+    };
+    const deck = buildSmartDeck([w1, w2], stats);
+    expect(deck.map((d) => d.word)).not.toContain(w1);
+    expect(deck.map((d) => d.word)).toContain(w2);
+  });
+
+  it("returns empty deck when all words are burned", () => {
+    const [w1] = WORDS.slice(0, 1);
+    const stats: Stats = {
+      [wordKey(w1)]: { e: 0, s: 5, last: Date.now(), streak: 5, b: Date.now() },
+    };
+    expect(buildSmartDeck([w1], stats)).toHaveLength(0);
+  });
+
+  it("keeps words with f (facile) flag — deprioritised but not removed", () => {
+    const [w1] = WORDS.slice(0, 1);
+    const stats: Stats = {
+      [wordKey(w1)]: { e: 0, s: 5, last: Date.now(), streak: 5, f: Date.now() },
+    };
+    expect(buildSmartDeck([w1], stats)).toHaveLength(1);
+  });
+
+  it("does not exclude a word whose stat has no b field", () => {
+    const [w1] = WORDS.slice(0, 1);
+    const stats: Stats = {
+      [wordKey(w1)]: { e: 2, s: 3, last: Date.now(), streak: 1 },
+    };
+    expect(buildSmartDeck([w1], stats)).toHaveLength(1);
+  });
+
+  it("burned word is excluded even when it has the highest error rate", () => {
+    const [w1, w2] = WORDS.slice(0, 2);
+    const stats: Stats = {
+      [wordKey(w1)]: { e: 99, s: 0, last: Date.now(), streak: 0, b: Date.now() },
+      [wordKey(w2)]: { e: 0, s: 10, last: Date.now(), streak: 10 },
+    };
+    const deck = buildSmartDeck([w1, w2], stats);
+    expect(deck).toHaveLength(1);
+    expect(deck[0].word).toEqual(w2);
+  });
+});
+
+// ---- storage keys ----
+describe("storage keys", () => {
+  it("STORAGE_KEY is a non-empty string", () => {
+    expect(typeof STORAGE_KEY).toBe("string");
+    expect(STORAGE_KEY.length).toBeGreaterThan(0);
+  });
+
+  it("ACTIVITY_KEY is a non-empty string", () => {
+    expect(typeof ACTIVITY_KEY).toBe("string");
+    expect(ACTIVITY_KEY.length).toBeGreaterThan(0);
+  });
+
+  it("ACTIVITY_KEY and STORAGE_KEY are distinct to avoid collisions", () => {
+    expect(ACTIVITY_KEY).not.toBe(STORAGE_KEY);
+  });
+});
+
+// ---- Stats type — b (burned) field ----
+describe("Stats b field", () => {
+  it("stat record accepts optional b field", () => {
+    const stats: Stats = {
+      with_burn: { e: 0, s: 5, last: 0, streak: 5, b: 1000 },
+      without_burn: { e: 0, s: 5, last: 0, streak: 5 },
+    };
+    expect(stats["with_burn"].b).toBe(1000);
+    expect(stats["without_burn"].b).toBeUndefined();
   });
 });
