@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Toggle } from "@/components/ui/toggle";
-import { ExternalLink, ChevronDown, RotateCcw, ArrowRight, Lightbulb, SkipForward, Check, ThumbsUp } from "lucide-react";
+import { ExternalLink, ChevronDown, RotateCcw, ArrowRight, Lightbulb, SkipForward, Check, ThumbsUp, Volume2, VolumeX } from "lucide-react";
 
 interface DeckItem { word: Word; def: string; }
 interface LastResult { word: Word; def: string; ok: boolean; streak: number; skipped?: boolean; facile?: boolean; }
@@ -31,12 +31,51 @@ export default function App() {
   const inputRef = useRef<HTMLInputElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
 
+  const [sessionLength, setSessionLength] = useState<number | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
+    try { return localStorage.getItem('mf_sound') !== '0'; } catch { return true; }
+  });
+  const audioCtxRef = useRef<AudioContext | null>(null);
+
+  useEffect(() => {
+    try { localStorage.setItem('mf_sound', soundEnabled ? '1' : '0'); } catch {}
+  }, [soundEnabled]);
+
+  const playSound = useCallback((type: 'correct' | 'wrong') => {
+    if (!soundEnabled) return;
+    try {
+      if (!audioCtxRef.current) audioCtxRef.current = new AudioContext();
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+      const play = (freq: number, startOffset: number, dur: number, vol = 0.11) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine'; osc.frequency.value = freq;
+        const t = ctx.currentTime + startOffset;
+        gain.gain.setValueAtTime(vol, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        osc.start(t); osc.stop(t + dur + 0.02);
+      };
+      if (type === 'correct') { play(523, 0, 0.14); play(659, 0.1, 0.18); }
+      else { play(349, 0, 0.1); play(220, 0.08, 0.14); }
+    } catch {}
+  }, [soundEnabled]);
+
+  const haptic = useCallback((type: 'correct' | 'wrong') => {
+    try {
+      if (type === 'correct') (navigator as any).vibrate?.(40);
+      else (navigator as any).vibrate?.([40, 20, 40]);
+    } catch {}
+  }, []);
+
   // computePool takes explicit args so toggle handlers can use updated values before state settles
   const computePool = useCallback((themes: string[] | null, hardOnly: boolean) => {
     let pool = !themes ? WORDS : (() => {
       const cats = THEMES.filter(t => themes.includes(t.id)).flatMap(t => t.cats);
       return WORDS.filter(w => cats.includes(w.cat));
     })();
+    pool = pool.filter(w => !statsRef.current[wordKey(w)]?.b);
     if (hardOnly) {
       pool = pool.filter(w => {
         const s = statsRef.current[wordKey(w)];
@@ -130,13 +169,15 @@ export default function App() {
     }
   }, []);
 
-  const restart = useCallback((pool?: Word[]) => {
+  const restart = useCallback((pool?: Word[], forceMaxSize?: number | null) => {
     const p = pool || getPool();
-    setDeck(buildSmartDeck(p, statsRef.current));
+    const full = buildSmartDeck(p, statsRef.current);
+    const ms = forceMaxSize !== undefined ? forceMaxSize : sessionLength;
+    setDeck(ms ? full.slice(0, ms) : full);
     setIdx(0); setScore(0); setInput(""); setLastResult(null);
     setShowHint(false); setSessionErrors([]); setStarted(true);
     setTimeout(() => inputRef.current?.focus(), 100);
-  }, [getPool]);
+  }, [getPool, sessionLength]);
 
   const advance = () => {
     setIdx(i => i + 1); setInput(""); setShowHint(false);
@@ -151,6 +192,8 @@ export default function App() {
     const upd = { e: prev.e + (ok ? 0 : 1), s: prev.s + (ok ? 1 : 0), last: Date.now(), streak: ok ? (prev.streak || 0) + 1 : 0 };
     save({ ...stats, [key]: upd });
     if (ok) setScore(s => s + (showHint ? 0.5 : 1)); else setSessionErrors(p => [...p, item]);
+    playSound(ok ? 'correct' : 'wrong');
+    haptic(ok ? 'correct' : 'wrong');
     setLastResult({ word: cur, def: item.def, ok, streak: upd.streak });
     advance();
   };
@@ -161,6 +204,8 @@ export default function App() {
     const prev = stats[key] || { e: 0, s: 0, last: 0, streak: 0 };
     save({ ...stats, [key]: { ...prev, e: prev.e + 1, last: Date.now(), streak: 0 } });
     setSessionErrors(p => [...p, item]);
+    playSound('wrong');
+    haptic('wrong');
     setLastResult({ word: cur, def: item.def, ok: false, skipped: true, streak: 0 });
     advance();
   };
@@ -173,6 +218,14 @@ export default function App() {
     setLastResult({ word: cur, def: item.def, ok: true, facile: true, streak: prev.streak || 0 });
     advance();
   };
+
+  const markBurned = useCallback((word: Word) => {
+    const key = wordKey(word);
+    const prev = statsRef.current[key] || { e: 0, s: 0, last: 0, streak: 0 };
+    const ns = { ...statsRef.current, [key]: { ...prev, b: Date.now() } };
+    save(ns);
+    setLastResult(null);
+  }, [save]);
 
   function exportStats() {
     const json = JSON.stringify(stats, null, 2);
@@ -208,12 +261,18 @@ export default function App() {
   }
 
   const totalW = WORDS.length;
-  const { learned, trouble, unseen, facileCount } = useMemo(() => ({
-    learned: WORDS.filter(w => { const s = stats[wordKey(w)]; return s && !s.f && s.s > s.e && s.s + s.e >= 2; }).length,
-    trouble: WORDS.filter(w => { const s = stats[wordKey(w)]; return s && !s.f && s.e > s.s; }).length,
-    unseen: WORDS.filter(w => !stats[wordKey(w)]).length,
-    facileCount: WORDS.filter(w => stats[wordKey(w)]?.f).length,
-  }), [stats]);
+  const { learned, trouble, unseen, facileCount, burnedCount, practicedToday } = useMemo(() => {
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    const ts = todayStart.getTime();
+    return {
+      learned: WORDS.filter(w => { const s = stats[wordKey(w)]; return s && !s.f && !s.b && s.s > s.e && s.s + s.e >= 2; }).length,
+      trouble: WORDS.filter(w => { const s = stats[wordKey(w)]; return s && !s.f && !s.b && s.e > s.s; }).length,
+      unseen: WORDS.filter(w => { const s = stats[wordKey(w)]; return !s || (!s.b && s.s + s.e === 0); }).length,
+      facileCount: WORDS.filter(w => { const s = stats[wordKey(w)]; return !!s?.f && !s.b; }).length,
+      burnedCount: WORDS.filter(w => !!stats[wordKey(w)]?.b).length,
+      practicedToday: WORDS.filter(w => { const s = stats[wordKey(w)]; return s?.last && s.last >= ts; }).length,
+    };
+  }, [stats]);
   const sortedWords = useMemo(() => {
     const cats = selThemes ? THEMES.filter(t => selThemes.includes(t.id)).flatMap(t => t.cats) : null;
     const base = cats ? WORDS.filter(w => cats.includes(w.cat)) : WORDS;
@@ -238,7 +297,14 @@ export default function App() {
       <div className="max-w-[500px] mx-auto px-4 py-6">
 
         {/* Masthead */}
-        <header className="text-center mb-5">
+        <header className="text-center mb-5 relative">
+          <button
+            onClick={() => setSoundEnabled(s => !s)}
+            className="absolute top-0 right-0 p-1 text-muted-foreground hover:text-foreground transition-colors"
+            title={soundEnabled ? "Couper le son" : "Activer le son"}
+          >
+            {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          </button>
           <p className="text-[10px] tracking-[6px] uppercase text-muted-foreground mb-1">Le quiz du</p>
           <h1 className="text-4xl font-bold tracking-wide text-foreground">Cruciverbiste</h1>
           <Separator className="my-3 bg-border" style={{ height: 3, backgroundImage: "repeating-linear-gradient(90deg, hsl(var(--border)), hsl(var(--border)) 2px, transparent 2px, transparent 6px)" }} />
@@ -247,8 +313,13 @@ export default function App() {
             <span><b className="text-destructive">{trouble}</b> difficile{trouble > 1 ? "s" : ""}</span>
             <span><b>{unseen}</b> nouveau{unseen > 1 ? "x" : ""}</span>
             {facileCount > 0 && <span><b className="text-amber-600">{facileCount}</b> facile{facileCount > 1 ? "s" : ""}</span>}
+            {burnedCount > 0 && <span><b className="text-[hsl(153,50%,22%)]">{burnedCount}</b> brûlé{burnedCount > 1 ? "s" : ""}</span>}
           </div>
+          {practicedToday > 0 && (
+            <p className="text-[10px] text-muted-foreground mt-1">{practicedToday} mot{practicedToday > 1 ? "s" : ""} vus aujourd'hui</p>
+          )}
           <div className="mt-2.5 h-1 rounded-sm bg-muted overflow-hidden flex">
+            <div className="h-full bg-[hsl(153,50%,22%)] transition-all duration-500" style={{ width: `${(burnedCount / totalW) * 100}%` }} />
             <div className="h-full bg-[hsl(153,40%,30%)] transition-all duration-500" style={{ width: `${(learned / totalW) * 100}%` }} />
             <div className="h-full bg-destructive transition-all duration-500" style={{ width: `${(trouble / totalW) * 100}%` }} />
           </div>
@@ -289,6 +360,17 @@ export default function App() {
           >Difficiles ✗</Toggle>
         </div>
 
+        {/* Session length */}
+        <div className="flex gap-1.5 justify-center mb-4">
+          {([10, 25, null] as (number | null)[]).map(len => (
+            <Toggle key={len ?? 'all'} pressed={sessionLength === len}
+              onPressedChange={() => { setSessionLength(len); restart(computePool(selThemes, onlyHard), len); }}
+              size="sm" variant="outline"
+              className="h-6 px-2.5 text-[10px] font-semibold data-[state=on]:bg-primary data-[state=on]:text-primary-foreground rounded-sm"
+            >{len ? `${len} mots` : 'Tout'}</Toggle>
+          ))}
+        </div>
+
         {/* Result banner */}
         {lastResult && (
           <div onClick={() => setLastResult(null)}
@@ -302,7 +384,16 @@ export default function App() {
             </span>
             <span className="flex-1 text-xs text-foreground italic truncate">{lastResult.def}</span>
             {lastResult.facile && <span className="text-xs text-amber-600 font-semibold">facile</span>}
-            {!lastResult.facile && lastResult.ok && lastResult.streak >= 3 && <span className="text-xs">🔥{lastResult.streak}</span>}
+            {!lastResult.facile && lastResult.ok && lastResult.streak >= 3 && lastResult.streak < 5 && (
+              <span className="text-xs">🔥{lastResult.streak}</span>
+            )}
+            {!lastResult.facile && lastResult.ok && lastResult.streak >= 5 && (
+              <button
+                onClick={e => { e.stopPropagation(); markBurned(lastResult.word); }}
+                className="shrink-0 text-[10px] text-amber-700 font-semibold border border-amber-400/60 rounded-sm px-1.5 py-0.5 hover:bg-amber-100 transition-colors"
+                title="Maîtrisé — retirer de la rotation"
+              >🔥{lastResult.streak} brûler</button>
+            )}
             <a href={wiktUrl(lastResult.word)} target="_blank" rel="noopener noreferrer"
               onClick={e => e.stopPropagation()} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors">
               <ExternalLink className="w-3.5 h-3.5" />
@@ -319,7 +410,7 @@ export default function App() {
 
         {/* Quiz card */}
         {!done && current && (
-          <Card className="border-border shadow-sm relative overflow-hidden bg-card">
+          <Card key={idx} className="border-border shadow-sm relative overflow-hidden bg-card animate-card-in">
             <CardContent className="pt-10 pb-6 px-6 text-center">
               <div className="absolute top-3 left-4 right-4 flex justify-between text-[11px] text-muted-foreground">
                 <span>{idx + 1} ⁄ {deck.length}</span>
@@ -472,7 +563,8 @@ export default function App() {
                     <div key={wordKey(w)} className="flex items-center gap-2 py-1 border-b border-border text-xs">
                       <span className="min-w-[70px] font-bold tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>{w.mot}</span>
                       <span className="flex-1 text-muted-foreground italic truncate">{w.defs[0]}</span>
-                      {isFacile && <span className="text-[10px] text-amber-600 font-bold">facile</span>}
+                      {stats[wordKey(w)]?.b && <span className="text-[10px] text-[hsl(153,50%,22%)] font-bold">brûlé</span>}
+                      {isFacile && !stats[wordKey(w)]?.b && <span className="text-[10px] text-amber-600 font-bold">facile</span>}
                       <span className={`min-w-[30px] text-right text-[10px] font-bold ${
                         isFacile ? "text-amber-600" : pct < 0 ? "text-muted-foreground/50" : pct >= 80 ? "text-[hsl(153,40%,30%)]" : pct >= 50 ? "text-muted-foreground" : "text-destructive"
                       }`}>{pct < 0 ? "—" : `${pct}%`}</span>

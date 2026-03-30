@@ -227,11 +227,13 @@ export const wiktUrl = (w: Word) => {
   return `https://fr.wiktionary.org/wiki/${encodeURIComponent(title)}`;
 };
 
-export interface Stats { [key: string]: { e: number; s: number; last: number; streak: number; f?: number } }
+export interface Stats { [key: string]: { e: number; s: number; last: number; streak: number; f?: number; b?: number } }
 
 export function buildSmartDeck(words: Word[], stats: Stats): { word: Word; def: string }[] {
   const now = Date.now();
-  return words.map(w => {
+  return words
+    .filter(w => !stats[wordKey(w)]?.b)
+    .map(w => {
     const s = stats[wordKey(w)] || { e: 0, s: 0, last: 0 };
     const total = s.e + s.s;
     const errR = total > 0 ? s.e / total : 0.5;
