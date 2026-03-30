@@ -294,6 +294,11 @@ export default function App() {
       practicedToday: WORDS.filter(w => { const s = stats[wordKey(w)]; return s?.last && s.last >= ts; }).length,
     };
   }, [stats]);
+  const current = deck[idx];
+  const done = started && idx >= deck.length && deck.length > 0;
+  const emptyPool = started && deck.length === 0;
+  const progressPct = deck.length > 0 ? (idx / deck.length) * 100 : 0;
+
   const mcOptions = useMemo(() => {
     if (!mcMode || !current) return null;
     const pool = computePool(selThemes, onlyHard);
@@ -325,10 +330,6 @@ export default function App() {
       return (sa.e + sa.s > 0 ? sa.s / (sa.e + sa.s) : -1) - (sb.e + sb.s > 0 ? sb.s / (sb.e + sb.s) : -1);
     });
   }, [stats, selThemes]);
-  const current = deck[idx];
-  const done = started && idx >= deck.length && deck.length > 0;
-  const emptyPool = started && deck.length === 0;
-  const progressPct = deck.length > 0 ? (idx / deck.length) * 100 : 0;
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
