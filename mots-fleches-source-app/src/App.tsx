@@ -312,7 +312,7 @@ export default function App() {
   const mcOptions = useMemo(() => {
     if (!mcMode || !current) return null;
     const pool = computePool(selThemes, onlyHard);
-    const others = shuffle(pool.filter(w => w !== current.word)).slice(0, 3).map(w => w.mot.split("/")[0].trim());
+    const others = shuffle(pool.filter(w => w !== current.word && w.lettres === current.word.lettres)).slice(0, 3).map(w => w.mot.split("/")[0].trim());
     if (others.length < 3) return null;
     return shuffle([current.word.mot.split("/")[0].trim(), ...others]);
   }, [mcMode, current, idx, computePool, selThemes, onlyHard]);
