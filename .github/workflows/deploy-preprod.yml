@@ -2,11 +2,6 @@ name: Deploy with Preprod
 
 on:
   workflow_dispatch:
-    inputs:
-      preprod_branch:
-        description: "Branch to deploy as preprod"
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -66,7 +61,7 @@ jobs:
       - name: Checkout preprod branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ inputs.preprod_branch }}
+          ref: ${{ github.ref_name }}
           path: preprod-src
 
       - name: Build mots-fleches (preprod)
