@@ -1,0 +1,119 @@
+name: Deploy with Preprod
+
+on:
+  workflow_dispatch:
+    inputs:
+      preprod_branch:
+        description: "Branch to deploy as preprod"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      # --- Production build (from main) ---
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Build mots-fleches (prod)
+        working-directory: mots-fleches-source-app
+        run: |
+          pnpm install --frozen-lockfile
+          npx vite build
+          cp dist/mots-fleches.js ../projects/mots-fleches.js
+          cp dist/mots-fleches.css ../projects/mots-fleches.css
+
+      - name: Build task-logger (prod)
+        working-directory: task-logger-source
+        run: |
+          pnpm install --frozen-lockfile
+          npx vite build
+          cp dist/task-logger.js ../projects/task-logger.js
+          cp dist/task-logger.css ../projects/task-logger.css
+
+      - name: Build routine-tracker (prod)
+        working-directory: routine-tracker-source
+        run: |
+          pnpm install --frozen-lockfile
+          npx vite build
+          cp dist/routine-tracker.js ../projects/routine-tracker.js
+          cp dist/routine-tracker.css ../projects/routine-tracker.css
+
+      # --- Preprod build (from target branch) ---
+      - name: Checkout preprod branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.preprod_branch }}
+          path: preprod-src
+
+      - name: Build mots-fleches (preprod)
+        working-directory: preprod-src/mots-fleches-source-app
+        run: |
+          pnpm install --frozen-lockfile
+          npx vite build
+          cp dist/mots-fleches.js ../projects/mots-fleches.js
+          cp dist/mots-fleches.css ../projects/mots-fleches.css
+
+      - name: Build task-logger (preprod)
+        working-directory: preprod-src/task-logger-source
+        run: |
+          pnpm install --frozen-lockfile
+          npx vite build
+          cp dist/task-logger.js ../projects/task-logger.js
+          cp dist/task-logger.css ../projects/task-logger.css
+
+      - name: Build routine-tracker (preprod)
+        working-directory: preprod-src/routine-tracker-source
+        run: |
+          pnpm install --frozen-lockfile
+          npx vite build
+          cp dist/routine-tracker.js ../projects/routine-tracker.js
+          cp dist/routine-tracker.css ../projects/routine-tracker.css
+
+      # --- Assemble preprod into subdirectory ---
+      - name: Assemble preprod directory
+        run: |
+          mkdir -p preprod
+          cp preprod-src/index.html preprod/
+          cp preprod-src/styles.css preprod/
+          cp preprod-src/projects.js preprod/
+          cp preprod-src/script.js preprod/
+          cp preprod-src/favicon.svg preprod/ 2>/dev/null || true
+          cp -r preprod-src/projects preprod/projects
+          rm -rf preprod-src
+
+      # --- Deploy combined artifact ---
+      - name: Setup Pages
+        uses: actions/configure-pages@v6.0.0
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: "."
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
