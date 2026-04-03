@@ -335,7 +335,8 @@ export default function App() {
   const sortedWords = useMemo(() => {
     const cats = selThemes ? THEMES.filter(t => selThemes.includes(t.id)).flatMap(t => t.cats) : null;
     const base = cats ? WORDS.filter(w => cats.includes(w.cat)) : WORDS;
-    return [...base].sort((a, b) => {
+    const shuffled = [...base].sort(() => Math.random() - 0.5);
+    return shuffled.sort((a, b) => {
       const sa = stats[wordKey(a)] || { e: 0, s: 0 }, sb = stats[wordKey(b)] || { e: 0, s: 0 };
       return (sa.e + sa.s > 0 ? sa.s / (sa.e + sa.s) : -1) - (sb.e + sb.s > 0 ? sb.s / (sb.e + sb.s) : -1);
     });
