@@ -2,6 +2,8 @@ name: Deploy with Preprod
 
 on:
   workflow_dispatch:
+  pull_request:
+    types: [opened]
 
 permissions:
   contents: read
@@ -61,7 +63,7 @@ jobs:
       - name: Checkout preprod branch
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.head_ref || github.ref_name }}
           path: preprod-src
 
       - name: Build mots-fleches (preprod)
