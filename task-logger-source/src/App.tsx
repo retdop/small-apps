@@ -317,8 +317,6 @@ export default function App() {
   }
 
   // Derived data
-  const dueTodayTasks = state.tasks.filter((t) => isTaskDue(t, today));
-  const todayLog = state.logs[today] ?? {};
   const grid = getCalendarGrid(calYear, calMonth);
   const monthName = new Date(calYear, calMonth, 1).toLocaleDateString(
     undefined,
@@ -362,27 +360,34 @@ export default function App() {
           </div>
         </header>
 
-        {/* Today section */}
+        {/* Task logging section — unified for today and past dates */}
         <section className="mb-9">
           <h2 className="text-[0.8rem] font-semibold text-[#8b949e] uppercase tracking-[0.04em] mb-3">
-            Today{" "}
-            <span className="text-[#e6edf3] normal-case tracking-normal text-[0.85rem] font-normal">
-              {formatDate(today)}
-            </span>
+            {selectedDate === today ? "Today" : formatDate(selectedDate)}{" "}
+            {selectedDate === today && (
+              <span className="text-[#e6edf3] normal-case tracking-normal text-[0.85rem] font-normal">
+                {formatDate(today)}
+              </span>
+            )}
           </h2>
           <div className="flex flex-col gap-1.5">
-            {dueTodayTasks.length === 0 && (
+            {dueDateTasks.length === 0 && deletedEntries.length === 0 && (
               <p className="text-[#8b949e] text-[0.88rem] text-center py-6">
-                No tasks yet. Add one below.
+                {selectedDate === today
+                  ? "No tasks yet. Add one below."
+                  : "No logs for this day."}
               </p>
             )}
-            {dueTodayTasks.map((task) => {
-              const logEntry = todayLog[task.id];
+            {dueDateTasks.map((task) => {
+              const logEntry = dayLog[task.id];
               const done = !!logEntry;
-              const streak = getStreak(state, task.id);
+              const streak =
+                selectedDate === today ? getStreak(state, task.id) : 0;
               const progress = getCompletionProgress(state, task);
               const pct = progress
-                ? Math.round((progress.logged / Math.max(progress.total, 1)) * 100)
+                ? Math.round(
+                    (progress.logged / Math.max(progress.total, 1)) * 100
+                  )
                 : null;
               return (
                 <div
@@ -392,7 +397,7 @@ export default function App() {
                   <button
                     type="button"
                     title={done ? "Undo" : "Log task"}
-                    onClick={() => toggleLog(task.id, today)}
+                    onClick={() => toggleLog(task.id, selectedDate)}
                     className={`${checkBase} ${done ? checkDone : checkPending}`}
                   >
                     ✓
@@ -409,7 +414,9 @@ export default function App() {
                     <div className="text-[0.75rem] text-[#8b949e] mt-0.5">
                       {capitalize(task.freq)}
                       {task.totalDuration && (
-                        <span className="ml-1.5">· {task.totalDuration}d goal</span>
+                        <span className="ml-1.5">
+                          · {task.totalDuration}d goal
+                        </span>
                       )}
                     </div>
                     {done && (
@@ -424,7 +431,8 @@ export default function App() {
                             className="h-full rounded-full transition-all"
                             style={{
                               width: `${pct}%`,
-                              backgroundColor: pct >= 100 ? "#3fb950" : "#58a6ff",
+                              backgroundColor:
+                                pct >= 100 ? "#3fb950" : "#58a6ff",
                             }}
                           />
                         </div>
@@ -445,6 +453,25 @@ export default function App() {
                 </div>
               );
             })}
+            {deletedEntries.map(({ id, time }) => (
+              <div key={id} className={`${rowBase} ${rowDone}`}>
+                <button
+                  type="button"
+                  disabled
+                  className={`${checkBase} ${checkDone} cursor-default`}
+                >
+                  ✓
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-[0.95rem]">
+                    (deleted task)
+                  </div>
+                  <div className="text-[0.72rem] text-[#3fb950] mt-0.5">
+                    Logged {time}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -702,93 +729,6 @@ export default function App() {
             })}
           </div>
 
-          {/* Day detail */}
-          <div>
-            <h3 className="text-[0.85rem] text-[#8b949e] font-medium mb-2">
-              {formatDate(selectedDate)}
-            </h3>
-            <div className="flex flex-col gap-1.5">
-              {dueDateTasks.length === 0 && deletedEntries.length === 0 && (
-                <p className="text-[#8b949e] text-[0.88rem] text-center py-6">
-                  No logs for this day.
-                </p>
-              )}
-              {dueDateTasks.map((task) => {
-                const logEntry = dayLog[task.id];
-                const done = !!logEntry;
-                const progress = getCompletionProgress(state, task);
-                const pct = progress
-                  ? Math.round((progress.logged / Math.max(progress.total, 1)) * 100)
-                  : null;
-                return (
-                  <div
-                    key={task.id}
-                    className={`${rowBase} ${done ? rowDone : rowDefault}`}
-                  >
-                    <button
-                      type="button"
-                      title={done ? "Undo" : "Log task"}
-                      onClick={() => toggleLog(task.id, selectedDate)}
-                      className={`${checkBase} ${done ? checkDone : checkPending}`}
-                    >
-                      ✓
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-[0.95rem]">
-                        {task.name}
-                      </div>
-                      <div className="text-[0.75rem] text-[#8b949e] mt-0.5">
-                        {capitalize(task.freq)}
-                        {task.totalDuration && (
-                          <span className="ml-1.5">· {task.totalDuration}d goal</span>
-                        )}
-                      </div>
-                      {done && (
-                        <div className="text-[0.72rem] text-[#3fb950] mt-0.5">
-                          Logged {logEntry}
-                        </div>
-                      )}
-                      {progress !== null && pct !== null && (
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <div className="flex-1 h-1 bg-[#30363d] rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${pct}%`,
-                                backgroundColor: pct >= 100 ? "#3fb950" : "#58a6ff",
-                              }}
-                            />
-                          </div>
-                          <span className="text-[0.7rem] text-[#8b949e] tabular-nums whitespace-nowrap text-right">
-                            {progress.logged}/{progress.total}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              {deletedEntries.map(({ id, time }) => (
-                <div key={id} className={`${rowBase} ${rowDone}`}>
-                  <button
-                    type="button"
-                    disabled
-                    className={`${checkBase} ${checkDone} cursor-default`}
-                  >
-                    ✓
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-[0.95rem]">
-                      (deleted task)
-                    </div>
-                    <div className="text-[0.72rem] text-[#3fb950] mt-0.5">
-                      Logged {time}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </section>
       </div>
     </div>
